@@ -116,8 +116,7 @@ public class ShooterSubsystem extends SubsystemBase {
         { 3.5, 2900 },
         { 4.0, 3050 },
         { 5.0, 3200 },
-        { 5.4, 3400 },
-        { 10, 5400 }
+        { 5.4, 3400 }
     };
 
     // Clamp to bounds
