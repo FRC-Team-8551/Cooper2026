@@ -11,7 +11,7 @@ public final class Constants {
         public static final File kSwerveConfigurationDirectory = new File(Filesystem.getDeployDirectory(), "swerve");
         // Theoretical no-load free speed: 21.97 ft/s
         // More realistic max speed: 16.81 ft/s
-        public static final double kMaxSpeed = Units.feetToMeters(15);
+        public static final double kMaxSpeed = Units.feetToMeters(16);
     }
 
     public static final class IntakeConstants {
