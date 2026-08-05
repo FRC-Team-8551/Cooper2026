@@ -18,6 +18,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.ShooterConstants;
+import frc.robot.UserConfig;
 
 public class ShooterSubsystem extends SubsystemBase {
 
@@ -84,13 +85,17 @@ public class ShooterSubsystem extends SubsystemBase {
       // Always run upper indexer
       m_upperIndexerMotor.set(0.75);
 
-      // Feed as soon as the flywheel is at speed. No longer gated on
-      // SwerveSubsystem.isAimedAtHub() — shooting doesn't require (or
-      // trigger) chassis auto-aim anymore.
+      // Conditions
       boolean flywheelReady = m_shooterRightMotor.getEncoder().getVelocity() > targetRPM
           - ShooterConstants.kShooterRPMTolerance;
 
-      if (flywheelReady) {
+      boolean aimEnabled = UserConfig.getHubAimEnabled();
+      boolean aimed = SwerveSubsystem.isAimedAtHub();
+
+      boolean readyToFeed = flywheelReady && (!aimEnabled || aimed);
+
+      // Lower indexer gating
+      if (readyToFeed) {
         m_lowerIndexerMotor.set(0.75);
       } else {
         m_lowerIndexerMotor.set(0.0);
