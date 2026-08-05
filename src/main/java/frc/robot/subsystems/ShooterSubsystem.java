@@ -32,6 +32,7 @@ public class ShooterSubsystem extends SubsystemBase {
       MotorType.kBrushless);
 
   private boolean m_shooterActive = false;
+  private boolean m_flywheelReady = false;
 
   /** Creates a new ShooterSubsystem. */
   public ShooterSubsystem() {
@@ -85,7 +86,8 @@ public class ShooterSubsystem extends SubsystemBase {
       // Always run upper indexer
       m_upperIndexerMotor.set(0.75);
 
-      // Conditions
+      // Restored: feed still requires the flywheel at speed AND (if hub-aim
+      // is enabled on the driver-station toggle) the chassis being aimed.
       boolean flywheelReady = m_shooterRightMotor.getEncoder().getVelocity() > targetRPM
           - ShooterConstants.kShooterRPMTolerance;
 
@@ -93,19 +95,25 @@ public class ShooterSubsystem extends SubsystemBase {
       boolean aimed = SwerveSubsystem.isAimedAtHub();
 
       boolean readyToFeed = flywheelReady && (!aimEnabled || aimed);
+      m_flywheelReady = readyToFeed;
 
-      // Lower indexer gating
       if (readyToFeed) {
         m_lowerIndexerMotor.set(0.75);
       } else {
         m_lowerIndexerMotor.set(0.0);
       }
     } else {
+      m_flywheelReady = false;
       m_shooterLeftMotor.set(0);
       m_shooterRightMotor.set(0);
       m_lowerIndexerMotor.set(0);
       m_upperIndexerMotor.set(0);
     }
+  }
+
+  /** Used by RobotContainer to rumble the driver's controller when a shot is actually ready to feed. */
+  public boolean isReadyToFire() {
+    return m_flywheelReady;
   }
 
   private double getRPM(double distanceMeters) {

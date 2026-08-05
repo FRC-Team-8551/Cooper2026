@@ -88,6 +88,10 @@ public class SwerveSubsystem extends SubsystemBase {
     SmartDashboard.putNumber(SwerveConstants.kSlash + "Hub Distance",
         Math.round(getDistanceToHub(m_swerve.getPose()) * 1000.0) / 1000.0);
 
+    // Driver tool: show the current hub-aim toggle state on the dashboard
+    // so it's visible without digging through Shuffleboard/Elastic tabs.
+    SmartDashboard.putBoolean(SwerveConstants.kSlash + "Hub Aim Enabled", UserConfig.getHubAimEnabled());
+
     // Store hub aim status periodically for use in commands
     m_isAimedAtHub = m_aimController.getError() < 10;
 
@@ -140,7 +144,10 @@ public class SwerveSubsystem extends SubsystemBase {
 
         if (Math.abs(m_swerve.getGyro().getYawAngularVelocity().magnitude()) <= 360 && mt2.tagCount > 0) {
           m_swerve.setVisionMeasurementStdDevs(VecBuilder.fill(0.7, 0.7, Double.MAX_VALUE));
-          m_swerve.addVisionMeasurement(mt1.pose, mt1.timestampSeconds);
+          // BUG FIX: this was adding mt1's pose/timestamp again instead of
+          // mt2's. MegaTag2 estimates were computed but never actually used —
+          // every vision update was MegaTag1 regardless of which branch ran.
+          m_swerve.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
         }
       }
     }

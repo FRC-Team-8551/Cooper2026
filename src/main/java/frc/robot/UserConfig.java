@@ -18,6 +18,14 @@ public class UserConfig {
     private static final SendableChooser<Boolean> m_beansModeChooser = new SendableChooser<>();
     private static final SendableChooser<Boolean> m_apriltagLocalizationChooser = new SendableChooser<>();
 
+    // Quick in-match toggle for hub-aim, flipped from a controller button.
+    // SendableChooser has no programmatic "set selected" — only the
+    // dashboard widget can write to it — so this is a separate flag that
+    // ANDs with the chooser below rather than trying to drive the chooser
+    // itself. Leave the dashboard chooser on "Enabled" and this becomes the
+    // real on/off switch during a match.
+    private static boolean m_hubAimButtonOverride = true;
+
     public static final void initialize() {
         m_driveModeChooser.setDefaultOption("Field-Oriented Direct Angle", DriveMode.FieldOrientedDirectAngle);
         m_driveModeChooser.addOption("Field-Oriented Angular Velocity", DriveMode.FieldOrientedAngularVelocity);
@@ -48,7 +56,12 @@ public class UserConfig {
     }
 
     public static boolean getHubAimEnabled() {
-        return m_hubAimChooser.getSelected();
+        return m_hubAimChooser.getSelected() && m_hubAimButtonOverride;
+    }
+
+    /** Flips the button-controlled hub-aim override. Bound to an operator button in RobotContainer. */
+    public static void toggleHubAim() {
+        m_hubAimButtonOverride = !m_hubAimButtonOverride;
     }
 
     public static boolean getBumpAimEnabled() {
