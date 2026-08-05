@@ -8,11 +8,12 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.PS5Controller;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
 import frc.robot.Constants.OIConstants;
 import frc.robot.UserConfig.DriveMode;
 import frc.robot.subsystems.IntakeSubsystem;
@@ -25,8 +26,8 @@ import swervelib.SwerveInputStream;
 
 public class RobotContainer {
   // Controllers
-  private final CommandXboxController m_driverController = new CommandXboxController(OIConstants.kDriverControllerPort);
-  private final CommandXboxController m_operatorController = new CommandXboxController(
+  private final CommandPS5Controller m_driverController = new CommandPS5Controller(OIConstants.kDriverControllerPort);
+  private final CommandPS5Controller m_operatorController = new CommandPS5Controller(
       OIConstants.kOperatorControllerPort);
 
   // Subsystems
@@ -35,6 +36,9 @@ public class RobotContainer {
   private final ShooterSubsystem m_shooterSubsystem = new ShooterSubsystem();
 
   // Swerve Input Streams
+  // NOTE: getLeftX/getLeftY/getRightX are read continuously every loop, so
+  // translation and rotation already return to zero (and the robot stops
+  // moving/turning) the instant a stick is released — no extra binding needed.
   private final SwerveInputStream m_robotRelative = SwerveInputStream.of(
       m_swerveSubsystem.getSwerveDrive(),
       () -> -m_driverController.getLeftY(),
@@ -80,23 +84,29 @@ public class RobotContainer {
   }
 
   private void configureBindings() {
-    m_driverController.y().onTrue(new InstantCommand(() -> m_swerveSubsystem.zeroGyro()));
+    // Xbox Y -> PS5 Triangle
+    m_driverController.triangle().onTrue(new InstantCommand(() -> m_swerveSubsystem.zeroGyro()));
 
-    m_driverController.leftTrigger(0.5)
+    // Xbox LT axis-trigger -> PS5 L2 axis-trigger
+    m_driverController.axisGreaterThan(PS5Controller.Axis.kL2.value, 0.5)
         .whileTrue(m_intakeSubsystem.runIntake(0.5))
         .onFalse(m_intakeSubsystem.stopIntake());
 
-    m_operatorController.button(7)
+    // Xbox button(7)=Back -> PS5 Create
+    m_operatorController.create()
         .whileTrue(m_intakeSubsystem.runIntake(0.5))
         .onFalse(m_intakeSubsystem.stopIntake());
 
-    m_operatorController.button(8).onTrue(m_intakeSubsystem.runIntake(1)).onFalse(m_intakeSubsystem.runIntake(0.5));
+    // Xbox button(8)=Start -> PS5 Options
+    m_operatorController.options().onTrue(m_intakeSubsystem.runIntake(1)).onFalse(m_intakeSubsystem.runIntake(0.5));
 
-    m_driverController.rightTrigger(0.5)
+    // Xbox RT axis-trigger -> PS5 R2 axis-trigger
+    m_driverController.axisGreaterThan(PS5Controller.Axis.kR2.value, 0.5)
         .whileTrue(m_shooterSubsystem.runShooter())
         .onFalse(m_shooterSubsystem.stopShooter());
 
-    m_driverController.back().and(m_driverController.start()).onTrue(m_swerveSubsystem.zeroGyroWithAllianceCommand());
+    // Xbox Back+Start -> PS5 Create+Options
+    m_driverController.create().and(m_driverController.options()).onTrue(m_swerveSubsystem.zeroGyroWithAllianceCommand());
 
     m_operatorController.povUp().onTrue(m_intakeSubsystem.setIntakePivotSpeed(0.2))
         .onFalse(m_intakeSubsystem.setIntakePivotSpeed(0));
@@ -104,15 +114,20 @@ public class RobotContainer {
     m_operatorController.povDown().onTrue(m_intakeSubsystem.setIntakePivotSpeed(-0.2))
         .onFalse(m_intakeSubsystem.setIntakePivotSpeed(0));
 
-    m_operatorController.button(3).whileTrue(m_intakeSubsystem.runIntake(-0.65))
+    // Xbox X -> PS5 Square
+    m_operatorController.square().whileTrue(m_intakeSubsystem.runIntake(-0.65))
         .onFalse(m_intakeSubsystem.stopIntake());
 
-    m_operatorController.button(1).whileTrue(m_shooterSubsystem.reverseIndexers())
+    // Xbox A(button 1) -> PS5 Cross
+    m_operatorController.cross().whileTrue(m_shooterSubsystem.reverseIndexers())
         .onFalse(m_shooterSubsystem.stopShooter());
 
-    m_operatorController.a().onTrue(m_intakeSubsystem.setPivotPosition(0));
+    // Was previously ALSO bound to A (a()) in the Xbox version -> double bind.
+    // Moved to Circle, which was unused, so Cross and Circle each do one thing.
+    m_operatorController.circle().onTrue(m_intakeSubsystem.setPivotPosition(0));
 
-    m_operatorController.y().onTrue(m_intakeSubsystem.setPivotPosition(16));
+    // Xbox Y -> PS5 Triangle
+    m_operatorController.triangle().onTrue(m_intakeSubsystem.setPivotPosition(16));
   }
 
   public void changeDriveMode(DriveMode driveMode) {
@@ -131,12 +146,16 @@ public class RobotContainer {
         break;
       case FieldOrientedDirectAngle:
         newInputStream = m_allianceRelativeDirectAngle;
+        break; // was missing — fell through into default before
       default:
         break;
     }
 
+    // PS5 axis order differs from Xbox: R2 is axis index 4, not 3
+    // (Xbox: kRightTrigger=3 | PS5: kLeftX=0,kLeftY=1,kRightX=2,kL2=3,kR2=4,kRightY=5)
     m_swerveSubsystem.setDefaultCommand(
-        m_swerveSubsystem.drive(newInputStream, () -> m_driverController.axisGreaterThan(3, 0.5).getAsBoolean()));
+        m_swerveSubsystem.drive(newInputStream,
+            () -> m_driverController.axisGreaterThan(PS5Controller.Axis.kR2.value, 0.5).getAsBoolean()));
   }
 
   public Command getAutonomousCommand() {
